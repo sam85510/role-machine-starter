@@ -40,7 +40,7 @@ for f in 開工.py 收工.py 記進度.sh 加規則.sh 取名.py; do
     cp "$HERE/程式/$f" "$dst"; chmod +x "$dst"; n=$((n+1)); echo "更新：$f"
   fi
 done
-for f in 收工.md 新專長.md 開張.md; do
+for f in 收工.md 新專長.md 開張.md 收技能.md; do
   dst="$HOME/.claude/commands/$f"
   if [ ! -f "$dst" ] || ! cmp -s "$HERE/程式/$f" "$dst"; then
     cp "$HERE/程式/$f" "$dst"; n=$((n+1)); echo "更新：指令 $f"
