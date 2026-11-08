@@ -96,8 +96,8 @@ def main():
             newest = max([os.path.getmtime(f) for f in files] or [0])
             if t and newest < t and once(f"decide-{sid}", uid):
                 short = text if len(text) <= 40 else text[:40] + "…"
-                block(f"{boss} 這次說「{short}」，像是一個決定或同意。先問一句「下次還要照做嗎？」："
-                      f"要，用 加規則.sh 加進那位的規格；只跟這次有關，寫進這件任務的筆記本。"
+                block(f"{boss} 這次說「{short}」，像是一個決定或同意。寫進這件任務筆記本的「試行中」（附日期），不用問 {boss} 要不要建規則。"
+                      f"事情做完 {boss} 收下、或同一個修正兩件事都出現，才用 加規則.sh 升進那位的規格，收尾講一句「已加規則：…」。"
                       f"不是決定的話直接結束，不用跟 {boss} 提這個檢查。")
 
     if work >= WORK_MIN and once(f"log-{sid}", str(work)):
