@@ -36,7 +36,7 @@ fi
 D=$(date +%Y-%m-%d); n=0
 YES="$HOME/.claude/角色機_要裝.txt"; NO="$HOME/.claude/角色機_不要裝.txt"; touch "$YES" "$NO"
 OPT=$(grep -v '^#' "$HERE/選裝.txt" 2>/dev/null | cut -f1); PENDING=""
-for f in 開工.py 收工.py 記進度.sh 加規則.sh 取名.py 這輪.py 標題檢查.py 沒找到要再試.py 互動頁要有開關.py 講中文檢查.py; do
+for f in 開工.py 收工.py 記進度.sh 加規則.sh 取名.py 這輪.py 標題檢查.py 沒找到要再試.py 互動頁要有開關.py 講中文檢查.py 主線符號.py 開桌面視窗.sh; do
   dst="$HOME/.claude/hooks/角色機/$f"; k="${f%.*}"
   grep -qxF "$k" "$NO" && continue
   if echo "$OPT" | grep -qxF "$k" && ! grep -qxF "$k" "$YES"; then
@@ -84,7 +84,7 @@ no = set(l.strip() for l in open(f"{home}/.claude/角色機_不要裝.txt", enco
 ok = set(l.strip() for l in open(f"{home}/.claude/角色機_要裝.txt", encoding="utf-8") if l.strip())
 opt = set(l.split("\t")[0] for l in open(f"{here}/選裝.txt", encoding="utf-8") if l.strip() and not l.startswith("#"))
 for ev, name, sec in (("SessionStart", "開工.py", 15), ("Stop", "收工.py", 15), ("Stop", "標題檢查.py", 15),
-                      ("Stop", "沒找到要再試.py", 15), ("Stop", "講中文檢查.py", 15), ("PreToolUse", "互動頁要有開關.py", 10)):
+                      ("Stop", "沒找到要再試.py", 15), ("Stop", "講中文檢查.py", 15), ("PreToolUse", "互動頁要有開關.py", 10), ("Stop", "主線符號.py", 15)):
     k = name[:-3]
     if k in no or (k in opt and k not in ok):
         continue
@@ -120,8 +120,8 @@ PENDING=$(echo "$PENDING" | sed '/^$/d')
 if [ -n "$PENDING" ]; then
   echo ""
   echo "有選裝功能還沒判斷，先沒裝："
-  while IFS= read -r k; do grep -F "$k	" "$HERE/選裝.txt" | head -1 | awk -F'\t' '{print "- "$1"："$2"（"$3"）"}'; done <<< "$PENDING"
-  echo "給跑這支的 Claude：照每項「什麼情況才裝」判斷，看不出來就問使用者一句。"
+  while IFS= read -r k; do grep -F "$k	" "$HERE/選裝.txt" | head -1 | awk -F'\t' '{print "- "$1"："$2"（"$3"）"($4 ~ /^要問/ ? "【要先問使用者】" : "")}'; done <<< "$PENDING"
+  echo "給跑這支的 Claude：標【要先問使用者】的，照 README「選裝引導」用白話問他要不要，要的話一步步帶他設定；其他的照「什麼情況才裝」自己判斷，看不出來就問一句。"
   echo "要裝的寫進 $YES，不裝的寫進 $NO，一行一個名稱，再跑一次這支。"
 fi
 echo "重開 Claude 或開新視窗後生效。"
