@@ -32,15 +32,23 @@ if [ -d "$HERE/.git" ] && git -C "$HERE" remote get-url origin >/dev/null 2>&1; 
 fi
 
 # 1. 程式：有變才換，舊的留備份
+# 選裝.txt 列的是選裝：裝過的照舊更新；沒裝過也沒判斷過的先不裝，最後列出來給跑這支的 Claude 判斷
 D=$(date +%Y-%m-%d); n=0
-for f in 開工.py 收工.py 記進度.sh 加規則.sh 取名.py; do
-  dst="$HOME/.claude/hooks/角色機/$f"
+YES="$HOME/.claude/角色機_要裝.txt"; NO="$HOME/.claude/角色機_不要裝.txt"; touch "$YES" "$NO"
+OPT=$(grep -v '^#' "$HERE/選裝.txt" 2>/dev/null | cut -f1); PENDING=""
+for f in 開工.py 收工.py 記進度.sh 加規則.sh 取名.py 這輪.py 標題檢查.py 沒找到要再試.py 互動頁要有開關.py 講中文檢查.py; do
+  dst="$HOME/.claude/hooks/角色機/$f"; k="${f%.*}"
+  grep -qxF "$k" "$NO" && continue
+  if echo "$OPT" | grep -qxF "$k" && ! grep -qxF "$k" "$YES"; then
+    if [ -f "$dst" ]; then echo "$k" >> "$YES"; else PENDING="$PENDING
+$k"; continue; fi
+  fi
   if [ ! -f "$dst" ] || ! cmp -s "$HERE/程式/$f" "$dst"; then
     [ -f "$dst" ] && cp "$dst" "$dst.bak-$D"
     cp "$HERE/程式/$f" "$dst"; chmod +x "$dst"; n=$((n+1)); echo "更新：$f"
   fi
 done
-for f in 收工.md 新專長.md 開張.md 收技能.md; do
+for f in 收工.md 新專長.md 開張.md 收技能.md 收.md; do
   dst="$HOME/.claude/commands/$f"
   if [ ! -f "$dst" ] || ! cmp -s "$HERE/程式/$f" "$dst"; then
     cp "$HERE/程式/$f" "$dst"; n=$((n+1)); echo "更新：指令 $f"
@@ -72,7 +80,14 @@ json.dump({"boss": boss, "root": root}, open(f"{home}/.claude/角色機設定.js
 p = f"{home}/.claude/settings.json"
 s = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
 add = 0
-for ev, name, sec in (("SessionStart", "開工.py", 15), ("Stop", "收工.py", 15)):
+no = set(l.strip() for l in open(f"{home}/.claude/角色機_不要裝.txt", encoding="utf-8") if l.strip())
+ok = set(l.strip() for l in open(f"{home}/.claude/角色機_要裝.txt", encoding="utf-8") if l.strip())
+opt = set(l.split("\t")[0] for l in open(f"{here}/選裝.txt", encoding="utf-8") if l.strip() and not l.startswith("#"))
+for ev, name, sec in (("SessionStart", "開工.py", 15), ("Stop", "收工.py", 15), ("Stop", "標題檢查.py", 15),
+                      ("Stop", "沒找到要再試.py", 15), ("Stop", "講中文檢查.py", 15), ("PreToolUse", "互動頁要有開關.py", 10)):
+    k = name[:-3]
+    if k in no or (k in opt and k not in ok):
+        continue
     cmd = f'"{py}" "{home}/.claude/hooks/角色機/{name}"'
     items = s.setdefault("hooks", {}).setdefault(ev, [])
     if not any(h.get("command") == cmd for it in items for h in it.get("hooks", [])):
@@ -101,4 +116,12 @@ print(f"檢查新掛上 {add} 支")
 PY
 
 echo "完成。程式和指令更新 $n 項。工作資料夾：$ROOT"
+PENDING=$(echo "$PENDING" | sed '/^$/d')
+if [ -n "$PENDING" ]; then
+  echo ""
+  echo "有選裝功能還沒判斷，先沒裝："
+  while IFS= read -r k; do grep -F "$k	" "$HERE/選裝.txt" | head -1 | awk -F'\t' '{print "- "$1"："$2"（"$3"）"}'; done <<< "$PENDING"
+  echo "給跑這支的 Claude：照每項「什麼情況才裝」判斷，看不出來就問使用者一句。"
+  echo "要裝的寫進 $YES，不裝的寫進 $NO，一行一個名稱，再跑一次這支。"
+fi
 echo "重開 Claude 或開新視窗後生效。"
