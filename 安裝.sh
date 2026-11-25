@@ -36,7 +36,7 @@ fi
 D=$(date +%Y-%m-%d); n=0
 YES="$HOME/.claude/角色機_要裝.txt"; NO="$HOME/.claude/角色機_不要裝.txt"; touch "$YES" "$NO"
 OPT=$(grep -v '^#' "$HERE/選裝.txt" 2>/dev/null | cut -f1); PENDING=""
-for f in 開工.py 收工.py 記進度.sh 加規則.sh 取名.py 這輪.py 標題檢查.py 沒找到要再試.py 互動頁要有開關.py 講中文檢查.py 主線符號.py 開桌面視窗.sh; do
+for f in 開工.py 收工.py 記進度.sh 加規則.sh 取名.py 這輪.py 標題檢查.py 講中文檢查.py 主線符號.py 開桌面視窗.sh; do
   dst="$HOME/.claude/hooks/角色機/$f"; k="${f%.*}"
   grep -qxF "$k" "$NO" && continue
   if echo "$OPT" | grep -qxF "$k" && ! grep -qxF "$k" "$YES"; then
@@ -84,7 +84,7 @@ no = set(l.strip() for l in open(f"{home}/.claude/角色機_不要裝.txt", enco
 ok = set(l.strip() for l in open(f"{home}/.claude/角色機_要裝.txt", encoding="utf-8") if l.strip())
 opt = set(l.split("\t")[0] for l in open(f"{here}/選裝.txt", encoding="utf-8") if l.strip() and not l.startswith("#"))
 for ev, name, sec in (("SessionStart", "開工.py", 15), ("Stop", "收工.py", 15), ("Stop", "標題檢查.py", 15),
-                      ("Stop", "沒找到要再試.py", 15), ("Stop", "講中文檢查.py", 15), ("PreToolUse", "互動頁要有開關.py", 10), ("Stop", "主線符號.py", 15)):
+                      ("Stop", "講中文檢查.py", 15), ("Stop", "主線符號.py", 15)):
     k = name[:-3]
     if k in no or (k in opt and k not in ok):
         continue
@@ -92,7 +92,20 @@ for ev, name, sec in (("SessionStart", "開工.py", 15), ("Stop", "收工.py", 1
     items = s.setdefault("hooks", {}).setdefault(ev, [])
     if not any(h.get("command") == cmd for it in items for h in it.get("hooks", [])):
         items.append({"hooks": [{"type": "command", "command": cmd, "timeout": sec}]}); add += 1
-if add:
+# 2026/11/26 拿掉的檢查：舊版裝過的，從設定撤掉，程式改名留著不刪
+gone = 0
+for ev, name in (("Stop", "沒找到要再試.py"), ("PreToolUse", "互動頁要有開關.py")):
+    cmd = f'"{py}" "{home}/.claude/hooks/角色機/{name}"'
+    items = s.get("hooks", {}).get(ev, [])
+    keep = [it for it in items if not any(name in h.get("command", "") and "/hooks/角色機/" in h.get("command", "") for h in it.get("hooks", []))]
+    if len(keep) != len(items):
+        s["hooks"][ev] = keep; gone += 1
+    f = f"{home}/.claude/hooks/角色機/{name}"
+    if os.path.exists(f):
+        os.rename(f, f"{f}.停用-{day}")
+if gone:
+    print(f"撤掉舊檢查：{gone} 支")
+if add or gone:
     if os.path.exists(p):
         shutil.copy(p, f"{p}.bak-{day}")
     json.dump(s, open(p, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
